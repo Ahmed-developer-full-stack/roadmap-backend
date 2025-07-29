@@ -1,13 +1,18 @@
 import express from "express";
-import authRoutes from "./src/routes/auth"; // Express
-import studentsRouter from "./src/routes/students"; // Express
-import { assignmentsRouter } from "./src/routes/assignments"; // Express
+import cors from "cors"; 
+
+import authRoutes from "./src/routes/auth";
+import studentsRouter from "./src/routes/students";
+import { assignmentsRouter } from "./src/routes/assignments";
 import { assignmentSubmissionsRouter } from "./src/routes/assignmentSubmissions";
 import { quizzesRouter } from "./src/routes/quizzes";
 import { quizQuestionRouter } from "./src/routes/quizQuestions";
 import { quizSubmissionsRouter } from "./src/routes/quizSubmissions";
 
 const app = express();
+
+app.use(cors());
+
 app.use(express.json());
 
 app.use("/auth", authRoutes);
