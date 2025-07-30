@@ -40,16 +40,19 @@ quizSubmissionsRouter.post("/", async (req, res) => {
 
   const submitted_at = new Date().toISOString();
 
-  const { data, error } = await supabase.from("quiz_submissions").insert([
-    {
-      quiz_id,
-      student_id,
-      name,
-      answers,
-      score,
-      submitted_at,
-    },
-  ]);
+  const { data, error } = await supabase
+    .from("quiz_submissions")
+    .insert([
+      {
+        quiz_id,
+        student_id,
+        name,
+        answers,
+        score,
+        submitted_at,
+      },
+    ])
+    .select("*");
 
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json({ message: "Quiz submitted", data });
