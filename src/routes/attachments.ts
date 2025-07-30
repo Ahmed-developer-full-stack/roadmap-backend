@@ -25,7 +25,7 @@ attachmentsRouter.post("/", upload.single("file"), async (req, res) => {
 
   const fileExt = file.originalname.split(".").pop();
   const fileName = `${randomUUID()}.${fileExt}`;
-  const filePath = `attachments/${fileName}`;
+  const filePath = `${fileName}`;
 
   // رفع الملف إلى Supabase Storage
   const { error: uploadError } = await supabase.storage
@@ -34,8 +34,7 @@ attachmentsRouter.post("/", upload.single("file"), async (req, res) => {
       contentType: file.mimetype,
     });
 
-  if (uploadError)
-    return res.status(500).json({ error: uploadError.message });
+  if (uploadError) return res.status(500).json({ error: uploadError.message });
 
   // الحصول على رابط الملف
   const { data: urlData } = supabase.storage
@@ -43,15 +42,13 @@ attachmentsRouter.post("/", upload.single("file"), async (req, res) => {
     .getPublicUrl(filePath);
 
   // حفظ البيانات في جدول attachments
-  const { data, error } = await supabase
-    .from("attachments")
-    .insert([
-      {
-        title,
-        file_url: urlData?.publicUrl,
-        added_at: new Date().toISOString(),
-      },
-    ]);
+  const { data, error } = await supabase.from("attachments").insert([
+    {
+      title,
+      file_url: urlData?.publicUrl,
+      uploaded_at: new Date().toISOString(),
+    },
+  ]);
 
   if (error) return res.status(500).json({ error: error.message });
 
@@ -84,16 +81,14 @@ attachmentsRouter.delete("/:id", async (req, res) => {
     .eq("id", id)
     .single();
 
-  if (fetchError)
-    return res.status(500).json({ error: fetchError.message });
+  if (fetchError) return res.status(500).json({ error: fetchError.message });
 
-  // 2. نجيب اسم الملف من الرابط
-  const filePath = attachment.file_url.split("/storage/v1/object/public/attachments/")[1];
+  const filePath = attachment.file_url.split(
+    "/storage/v1/object/public/attachments/"
+  )[1];
 
-  // 3. نحذف الملف من Storage
   await supabase.storage.from("attachments").remove([filePath]);
 
-  // 4. نحذف من الجدول
   const { error } = await supabase.from("attachments").delete().eq("id", id);
 
   if (error) return res.status(500).json({ error: error.message });
