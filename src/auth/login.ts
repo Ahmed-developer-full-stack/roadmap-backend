@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { supabase } from "../lib/supabase";
 import studentsRouter from "../routes/students";
-import { ADMIN_NAMES } from "../middleware/auth"; // لو عايز تحدد الـAdmins بالاسم
+import { ADMIN_NAMES } from "../middleware/auth";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 
