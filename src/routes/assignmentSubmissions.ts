@@ -4,9 +4,12 @@ import { supabase } from "../lib/supabase";
 export const assignmentSubmissionsRouter = express.Router();
 
 assignmentSubmissionsRouter.get("/", async (_, res) => {
-  const { data, error } = await supabase
-    .from("assignment_submissions")
-    .select("*");
+  const { data, error } = await supabase.from("assignment_submissions").select(`
+      *,
+      students (
+        name
+      )
+    `);
 
   if (error) return res.status(500).json({ error: error.message });
   res.json({ data });
@@ -19,16 +22,14 @@ assignmentSubmissionsRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  const { data, error } = await supabase
-    .from("assignment_submissions")
-    .insert([
-      {
-        assignment_id,
-        student_id,
-        content,
-        submitted_at,
-      },
-    ]);
+  const { data, error } = await supabase.from("assignment_submissions").insert([
+    {
+      assignment_id,
+      student_id,
+      content,
+      submitted_at,
+    },
+  ]);
 
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json({ message: "Submission added", data });
