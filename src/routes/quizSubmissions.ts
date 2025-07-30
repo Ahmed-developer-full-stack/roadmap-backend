@@ -17,27 +17,29 @@ quizSubmissionsRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  // Get correct answers from quiz
+  // Get correct answers for each question
   const { data: questions, error: fetchError } = await supabase
     .from("quiz_question")
-    .select("correct_option")
+    .select("id, correct_option")
     .eq("quiz_id", quiz_id);
 
   if (fetchError) return res.status(500).json({ error: fetchError.message });
 
-  const correctAnswers = questions.map((q) => q.correct_option);
-
-  // Calculate score
   let score = 0;
-  for (let i = 0; i < answers.length; i++) {
-    if (answers[i] === correctAnswers[i]) {
+
+  for (const answer of answers) {
+    const question = questions.find((q) => q.id === answer.question_id);
+    if (
+      question &&
+      answer.selected.trim().toLowerCase() ===
+        question.correct_option.trim().toLowerCase()
+    ) {
       score++;
     }
   }
 
   const submitted_at = new Date().toISOString();
 
-  // Insert submission
   const { data, error } = await supabase.from("quiz_submissions").insert([
     {
       quiz_id,
