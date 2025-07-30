@@ -85,7 +85,12 @@ authRouter.post("/login", async (req, res) => {
     { expiresIn: "7d" }
   );
 
-  return res.status(200).json({ token, role: "student" });
+  return res.status(200).json({
+    token,
+    role: "student",
+    id: student.id,
+    name: student.name,
+  });
 });
 
 export default authRouter;
