@@ -15,7 +15,7 @@ assignmentsRouter.get("/", async (req, res) => {
 
 // ➕ Add new assignment
 assignmentsRouter.post("/", async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, file_url } = req.body;
 
   if (!title || !description )
     return res.status(400).json({ error: "Missing fields." });
