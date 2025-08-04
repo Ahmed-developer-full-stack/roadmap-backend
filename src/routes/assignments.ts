@@ -1,23 +1,9 @@
 import express from "express";
-import multer from "multer";
+import { upload } from "../middleware/upload";
 import { supabase } from "../lib/supabase";
 import { randomUUID } from "crypto";
 
 export const assignmentsRouter = express.Router();
-
-// إعداد multer بتقييد النوع والحجم
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ["image/", "application/pdf"];
-    if (!allowedTypes.some(type => file.mimetype.startsWith(type))) {
-      return cb(new Error("Only images and PDF files are allowed."));
-    }
-    cb(null, true);
-  },
-});
 
 assignmentsRouter.get("/", async (req, res) => {
   const { data, error } = await supabase.from("assignments").select("*");
@@ -37,6 +23,7 @@ assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
   if (req.file) {
     const fileExt = req.file.originalname.split(".").pop();
     const fileName = `assignment-${randomUUID()}.${fileExt}`;
+
     const { error: uploadError } = await supabase.storage
       .from("assignments")
       .upload(fileName, req.file.buffer, {
@@ -49,11 +36,15 @@ assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
       return res.status(500).json({ error: uploadError.message });
     }
 
-    const publicUrl = supabase.storage
+    const { data: publicUrlData } = supabase.storage
       .from("assignments")
-      .getPublicUrl(fileName).data?.publicUrl;
+      .getPublicUrl(fileName);
 
-    file_url = publicUrl;
+    if (!publicUrlData?.publicUrl) {
+      return res.status(500).json({ error: "Failed to retrieve public URL" });
+    }
+
+    file_url = publicUrlData.publicUrl;
   }
 
   const { data, error } = await supabase
@@ -84,13 +75,18 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
   if (description) updatedFields.description = description;
 
   if (req.file) {
+    // حذف الملف القديم
     if (oldAssignment.file_url) {
-      const oldFileName = oldAssignment.file_url.split("/").pop();
-      await supabase.storage.from("assignments").remove([oldFileName]);
+      const url = new URL(oldAssignment.file_url);
+      const oldFileName = url.pathname.split("/").pop();
+      if (oldFileName) {
+        await supabase.storage.from("assignments").remove([oldFileName]);
+      }
     }
 
     const fileExt = req.file.originalname.split(".").pop();
     const fileName = `assignment-${randomUUID()}.${fileExt}`;
+
     const { error: uploadError } = await supabase.storage
       .from("assignments")
       .upload(fileName, req.file.buffer, {
@@ -102,11 +98,15 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
       return res.status(500).json({ error: "File upload failed." });
     }
 
-    const publicUrl = supabase.storage
+    const { data: publicUrlData } = supabase.storage
       .from("assignments")
-      .getPublicUrl(fileName).data?.publicUrl;
+      .getPublicUrl(fileName);
 
-    updatedFields.file_url = publicUrl;
+    if (!publicUrlData?.publicUrl) {
+      return res.status(500).json({ error: "Failed to retrieve public URL" });
+    }
+
+    updatedFields.file_url = publicUrlData.publicUrl;
   }
 
   const { data, error } = await supabase
@@ -125,7 +125,6 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
 assignmentsRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
-
   const { data: assignment, error: fetchError } = await supabase
     .from("assignments")
     .select("file_url")
@@ -135,8 +134,11 @@ assignmentsRouter.delete("/:id", async (req, res) => {
   if (fetchError) return res.status(404).json({ error: "Assignment not found." });
 
   if (assignment.file_url) {
-    const fileName = assignment.file_url.split("/").pop();
-    await supabase.storage.from("assignments").remove([fileName]);
+    const url = new URL(assignment.file_url);
+    const fileName = url.pathname.split("/").pop();
+    if (fileName) {
+      await supabase.storage.from("assignments").remove([fileName]);
+    }
   }
 
   const { data, error } = await supabase
@@ -149,4 +151,12 @@ assignmentsRouter.delete("/:id", async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   return res.status(200).json({ message: "Assignment deleted", data });
+});
+
+// Middleware لمعالجة أخطاء multer
+assignmentsRouter.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError || err.message.includes("Only")) {
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
 });
