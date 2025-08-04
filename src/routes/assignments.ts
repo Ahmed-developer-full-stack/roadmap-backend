@@ -153,7 +153,6 @@ assignmentsRouter.delete("/:id", async (req, res) => {
   return res.status(200).json({ message: "Assignment deleted", data });
 });
 
-// Middleware لمعالجة أخطاء multer
 assignmentsRouter.use((err, req, res, next) => {
   if (err instanceof multer.MulterError || err.message.includes("Only")) {
     return res.status(400).json({ error: err.message });
