@@ -1,33 +1,56 @@
 import express from "express";
+import multer from "multer";
 import { supabase } from "../lib/supabase";
+import { randomUUID } from "crypto";
 
 export const assignmentsRouter = express.Router();
 
+// إعداد multer لتخزين الملفات مؤقتًا في الذاكرة
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
+// ------------------- [GET] كل الواجبات -------------------
 assignmentsRouter.get("/", async (req, res) => {
-  const { data, error } = await supabase
-    .from("assignments")
-    .select("*")
+  const { data, error } = await supabase.from("assignments").select("*");
 
   if (error) return res.status(500).json({ error: error.message });
   return res.status(200).json({ data });
 });
 
-assignmentsRouter.post("/", async (req, res) => {
-  const { title, description, file_url } = req.body;
+// ------------------- [POST] إضافة واجب مع صورة -------------------
+assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
+  const { title, description } = req.body;
 
-  if (!title || !description)
-    return res.status(400).json({ error: "Missing fields." });
+  if (!title || !description) {
+    return res.status(400).json({ error: "Title and description are required." });
+  }
 
-  const newAssignment = {
-    title,
-    description,
-    ...(file_url && { file_url }), // لو فيه صورة، ضيفها
-  };
+  let file_url = null;
+
+  if (req.file) {
+    const fileExt = req.file.originalname.split(".").pop();
+    const fileName = `assignment-${randomUUID()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from("assignments") // تأكد إن عندك bucket اسمه assignments
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      return res.status(500).json({ error: "File upload failed." });
+    }
+
+    const { data: publicUrl } = supabase.storage
+      .from("assignments")
+      .getPublicUrl(fileName);
+
+    file_url = publicUrl.publicUrl;
+  }
 
   const { data, error } = await supabase
     .from("assignments")
-    .insert([newAssignment])
+    .insert([{ title, description, file_url }])
     .select()
     .single();
 
@@ -36,18 +59,32 @@ assignmentsRouter.post("/", async (req, res) => {
   return res.status(201).json({ message: "Assignment added", data });
 });
 
-
-assignmentsRouter.put("/:id", async (req, res) => {
+// ------------------- [PUT] تعديل واجب -------------------
+assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
   const { id } = req.params;
-  const { title, description, file_url } = req.body;
+  const { title, description } = req.body;
 
-  const updatedFields: any = {
-    title,
-    description,
-  };
+  const updatedFields: any = { title, description };
 
-  if (file_url !== undefined) {
-    updatedFields.file_url = file_url;
+  if (req.file) {
+    const fileExt = req.file.originalname.split(".").pop();
+    const fileName = `assignment-${randomUUID()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from("assignments")
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      return res.status(500).json({ error: "File upload failed." });
+    }
+
+    const { data: publicUrl } = supabase.storage
+      .from("assignments")
+      .getPublicUrl(fileName);
+
+    updatedFields.file_url = publicUrl.publicUrl;
   }
 
   const { data, error } = await supabase
@@ -63,7 +100,7 @@ assignmentsRouter.put("/:id", async (req, res) => {
   return res.status(200).json({ message: "Assignment updated", data });
 });
 
-
+// ------------------- [DELETE] حذف واجب -------------------
 assignmentsRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
