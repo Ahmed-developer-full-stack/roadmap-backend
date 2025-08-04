@@ -59,7 +59,7 @@ assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
   const { data, error } = await supabase
     .from("assignments")
     .insert([{ title, description, file_url }])
-    .select()
+    .select("*")
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
@@ -113,7 +113,7 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
     .from("assignments")
     .update(updatedFields)
     .eq("id", id)
-    .select()
+    .select("*")
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
