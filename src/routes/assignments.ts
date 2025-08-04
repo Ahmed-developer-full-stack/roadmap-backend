@@ -19,14 +19,12 @@ const upload = multer({
   },
 });
 
-// ------------------- [GET] كل الواجبات -------------------
 assignmentsRouter.get("/", async (req, res) => {
   const { data, error } = await supabase.from("assignments").select("*");
   if (error) return res.status(500).json({ error: error.message });
   return res.status(200).json({ data });
 });
 
-// ------------------- [POST] إضافة واجب مع صورة -------------------
 assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
   const { title, description } = req.body;
 
@@ -47,7 +45,8 @@ assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
       });
 
     if (uploadError) {
-      return res.status(500).json({ error: "File upload failed." });
+      console.error("⛔ Supabase Upload Error:", uploadError);
+      return res.status(500).json({ error: uploadError.message });
     }
 
     const publicUrl = supabase.storage
@@ -68,7 +67,6 @@ assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
   return res.status(201).json({ message: "Assignment added", data });
 });
 
-// ------------------- [PUT] تعديل واجب -------------------
 assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
   const { id } = req.params;
   const { title, description } = req.body;
@@ -91,7 +89,6 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
       await supabase.storage.from("assignments").remove([oldFileName]);
     }
 
-    // رفع الجديد
     const fileExt = req.file.originalname.split(".").pop();
     const fileName = `assignment-${randomUUID()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
@@ -125,11 +122,10 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
   return res.status(200).json({ message: "Assignment updated", data });
 });
 
-// ------------------- [DELETE] حذف واجب -------------------
 assignmentsRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
-  // نحذف الملف من التخزين أولًا (لو موجود)
+
   const { data: assignment, error: fetchError } = await supabase
     .from("assignments")
     .select("file_url")
@@ -143,7 +139,6 @@ assignmentsRouter.delete("/:id", async (req, res) => {
     await supabase.storage.from("assignments").remove([fileName]);
   }
 
-  // نحذف الواجب من القاعدة
   const { data, error } = await supabase
     .from("assignments")
     .delete()
