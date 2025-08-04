@@ -5,14 +5,23 @@ import { randomUUID } from "crypto";
 
 export const assignmentsRouter = express.Router();
 
-// إعداد multer لتخزين الملفات مؤقتًا في الذاكرة
+// إعداد multer بتقييد النوع والحجم
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/", "application/pdf"];
+    if (!allowedTypes.some(type => file.mimetype.startsWith(type))) {
+      return cb(new Error("Only images and PDF files are allowed."));
+    }
+    cb(null, true);
+  },
+});
 
 // ------------------- [GET] كل الواجبات -------------------
 assignmentsRouter.get("/", async (req, res) => {
   const { data, error } = await supabase.from("assignments").select("*");
-
   if (error) return res.status(500).json({ error: error.message });
   return res.status(200).json({ data });
 });
@@ -31,7 +40,7 @@ assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
     const fileExt = req.file.originalname.split(".").pop();
     const fileName = `assignment-${randomUUID()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
-      .from("assignments") // تأكد إن عندك bucket اسمه assignments
+      .from("assignments")
       .upload(fileName, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: true,
@@ -41,11 +50,11 @@ assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
       return res.status(500).json({ error: "File upload failed." });
     }
 
-    const { data: publicUrl } = supabase.storage
+    const publicUrl = supabase.storage
       .from("assignments")
-      .getPublicUrl(fileName);
+      .getPublicUrl(fileName).data?.publicUrl;
 
-    file_url = publicUrl.publicUrl;
+    file_url = publicUrl;
   }
 
   const { data, error } = await supabase
@@ -64,9 +73,25 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
   const { id } = req.params;
   const { title, description } = req.body;
 
-  const updatedFields: any = { title, description };
+  const { data: oldAssignment, error: fetchError } = await supabase
+    .from("assignments")
+    .select("file_url")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) return res.status(404).json({ error: "Assignment not found." });
+
+  const updatedFields: any = {};
+  if (title) updatedFields.title = title;
+  if (description) updatedFields.description = description;
 
   if (req.file) {
+    if (oldAssignment.file_url) {
+      const oldFileName = oldAssignment.file_url.split("/").pop();
+      await supabase.storage.from("assignments").remove([oldFileName]);
+    }
+
+    // رفع الجديد
     const fileExt = req.file.originalname.split(".").pop();
     const fileName = `assignment-${randomUUID()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
@@ -80,11 +105,11 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
       return res.status(500).json({ error: "File upload failed." });
     }
 
-    const { data: publicUrl } = supabase.storage
+    const publicUrl = supabase.storage
       .from("assignments")
-      .getPublicUrl(fileName);
+      .getPublicUrl(fileName).data?.publicUrl;
 
-    updatedFields.file_url = publicUrl.publicUrl;
+    updatedFields.file_url = publicUrl;
   }
 
   const { data, error } = await supabase
@@ -104,6 +129,21 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
 assignmentsRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
+  // نحذف الملف من التخزين أولًا (لو موجود)
+  const { data: assignment, error: fetchError } = await supabase
+    .from("assignments")
+    .select("file_url")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) return res.status(404).json({ error: "Assignment not found." });
+
+  if (assignment.file_url) {
+    const fileName = assignment.file_url.split("/").pop();
+    await supabase.storage.from("assignments").remove([fileName]);
+  }
+
+  // نحذف الواجب من القاعدة
   const { data, error } = await supabase
     .from("assignments")
     .delete()
@@ -112,7 +152,6 @@ assignmentsRouter.delete("/:id", async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
-  if (!data) return res.status(404).json({ error: "Assignment not found." });
 
   return res.status(200).json({ message: "Assignment deleted", data });
 });
