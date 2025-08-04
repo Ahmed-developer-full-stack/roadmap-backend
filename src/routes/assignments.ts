@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 
 export const assignmentsRouter = express.Router();
 
-// 📥 Get all assignments
+
 assignmentsRouter.get("/", async (req, res) => {
   const { data, error } = await supabase
     .from("assignments")
@@ -13,16 +13,21 @@ assignmentsRouter.get("/", async (req, res) => {
   return res.status(200).json({ data });
 });
 
-// ➕ Add new assignment
 assignmentsRouter.post("/", async (req, res) => {
   const { title, description, file_url } = req.body;
 
-  if (!title || !description )
+  if (!title || !description)
     return res.status(400).json({ error: "Missing fields." });
+
+  const newAssignment = {
+    title,
+    description,
+    ...(file_url && { file_url }), // لو فيه صورة، ضيفها
+  };
 
   const { data, error } = await supabase
     .from("assignments")
-    .insert([{ title, description }])
+    .insert([newAssignment])
     .select()
     .single();
 
@@ -31,14 +36,23 @@ assignmentsRouter.post("/", async (req, res) => {
   return res.status(201).json({ message: "Assignment added", data });
 });
 
-// ✏️ Update assignment by ID
+
 assignmentsRouter.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { title, description } = req.body;
+  const { title, description, file_url } = req.body;
+
+  const updatedFields: any = {
+    title,
+    description,
+  };
+
+  if (file_url !== undefined) {
+    updatedFields.file_url = file_url;
+  }
 
   const { data, error } = await supabase
     .from("assignments")
-    .update({ title, description })
+    .update(updatedFields)
     .eq("id", id)
     .select()
     .single();
@@ -49,7 +63,7 @@ assignmentsRouter.put("/:id", async (req, res) => {
   return res.status(200).json({ message: "Assignment updated", data });
 });
 
-// 🗑️ Delete assignment by ID
+
 assignmentsRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
 

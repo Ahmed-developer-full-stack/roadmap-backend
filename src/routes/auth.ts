@@ -16,16 +16,16 @@ authRouter.post("/register", async (req, res) => {
     return res.status(400).json({ error: "Name and password are required" });
   }
 
-  const nameRegex = /^[a-zA-Z\s]{3,}$/; // Only letters and spaces, at least 3 characters
+  const nameRegex = /^[a-zA-Z\s]{3,}$/;
   if (!nameRegex.test(name)) {
     return res.status(400).json({ error: "Name must be at least 3 letters with no numbers or symbols" });
   }
+
 
   if (password.length < 6) {
     return res.status(400).json({ error: "Password must be at least 6 characters long" });
   }
 
-  // ✅ Check if user exists
   const { data: existingUser } = await supabase
     .from("students")
     .select("id")
