@@ -75,7 +75,6 @@ assignmentsRouter.put("/:id", upload.single("file"), async (req, res) => {
   if (description) updatedFields.description = description;
 
   if (req.file) {
-    // حذف الملف القديم
     if (oldAssignment.file_url) {
       const url = new URL(oldAssignment.file_url);
       const oldFileName = url.pathname.split("/").pop();
