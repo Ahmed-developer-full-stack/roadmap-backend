@@ -3,12 +3,40 @@ import { supabase } from "../lib/supabase";
 
 export const quizSubmissionsRouter = express.Router();
 
+// جلب كل الـ submissions
 quizSubmissionsRouter.get("/", async (_, res) => {
   const { data, error } = await supabase.from("quiz_submissions").select("*");
   if (error) return res.status(500).json({ error: error.message });
   res.json({ data });
 });
 
+quizSubmissionsRouter.get("/check", async (req, res) => {
+  const { quiz_id, student_id } = req.query;
+
+  if (!quiz_id || !student_id) {
+    return res.status(400).json({ error: "quiz_id and student_id are required" });
+  }
+
+  const { data, error } = await supabase
+    .from("quiz_submissions")
+    .select("*")
+    .eq("quiz_id", quiz_id)
+    .eq("student_id", student_id)
+    .maybeSingle();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  if (!data) {
+    return res.status(404).json({ status: "not_found" });
+  }
+
+  res.json({
+    status: "submitted",
+    data
+  });
+});
+
+// إضافة submission جديد
 quizSubmissionsRouter.post("/", async (req, res) => {
   const { quiz_id, student_id, name, answers } = req.body;
 
@@ -66,4 +94,3 @@ quizSubmissionsRouter.post("/", async (req, res) => {
     submitted_at,
   });
 });
-
