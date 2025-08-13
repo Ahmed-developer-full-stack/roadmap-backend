@@ -3,7 +3,6 @@ import { supabase } from "../lib/supabase";
 
 export const quizSubmissionsRouter = express.Router();
 
-// جلب كل الـ submissions
 quizSubmissionsRouter.get("/", async (_, res) => {
   const { data, error } = await supabase.from("quiz_submissions").select("*");
   if (error) return res.status(500).json({ error: error.message });
@@ -36,7 +35,6 @@ quizSubmissionsRouter.get("/check", async (req, res) => {
   });
 });
 
-// إضافة submission جديد
 quizSubmissionsRouter.post("/", async (req, res) => {
   const { quiz_id, student_id, name, answers } = req.body;
 
