@@ -79,3 +79,17 @@ assignmentSubmissionsRouter.patch("/:id/grade", async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   res.status(200).json({ message: "Grade updated successfully", data });
 });
+
+assignmentSubmissionsRouter.delete("/:id/grade", async (req, res) => {
+  const { id } = req.params;
+
+  const { data, error } = await supabase
+    .from("assignment_submissions")
+    .update({ grade: null })
+    .eq("id", id);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.status(200).json({ message: "Grade deleted successfully", data });
+});
+
