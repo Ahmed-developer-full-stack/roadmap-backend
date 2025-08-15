@@ -3,9 +3,13 @@ import { supabase } from "../lib/supabase";
 
 export const quizzesRouter = express.Router();
 
-// Get all quizzes
+// Get only active quizzes
 quizzesRouter.get("/", async (_, res) => {
-  const { data, error } = await supabase.from("quizzes").select("*");
+  const { data, error } = await supabase
+    .from("quizzes")
+    .select("*")
+    .eq("is_active", true); // Filter
+
   if (error) return res.status(500).json({ error: error.message });
   res.json({ data });
 });
