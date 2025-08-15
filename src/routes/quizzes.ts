@@ -3,16 +3,25 @@ import { supabase } from "../lib/supabase";
 
 export const quizzesRouter = express.Router();
 
-// Get only active quizzes
+// Get all quizzes (Admin)
+quizzesRouter.get("/admin", async (_, res) => {
+  const { data, error } = await supabase
+    .from("quizzes")
+    .select("*"); // Without Filter
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ data });
+});
+
+// Get active quizzes (Users)
 quizzesRouter.get("/", async (_, res) => {
   const { data, error } = await supabase
     .from("quizzes")
     .select("*")
     .eq("is_active", true); // Filter
-
   if (error) return res.status(500).json({ error: error.message });
   res.json({ data });
 });
+
 
 // Create quiz
 quizzesRouter.post("/", async (req, res) => {
