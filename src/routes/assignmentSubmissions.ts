@@ -43,25 +43,49 @@ assignmentSubmissionsRouter.get("/check", async (req, res) => {
 });
 
 
-assignmentSubmissionsRouter.post("/", async (req, res) => {
-  const { assignment_id, student_id, content, submitted_at } = req.body;
+assignmentSubmissionsRouter.post("/", upload.single("file"), async (req, res) => {
+  const { assignment_id, student_id, content } = req.body;
 
-  if (!assignment_id || !student_id || !content) {
+  if (!assignment_id || !student_id) {
     return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  let file_url = null;
+
+  if (req.file) {
+    const fileName = `${uuidv4()}-${req.file.originalname}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("submissions")
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype,
+      });
+
+    if (uploadError) {
+      return res.status(500).json({ error: uploadError.message });
+    }
+
+    const { data: publicUrl } = supabase.storage
+      .from("submissions")
+      .getPublicUrl(fileName);
+
+    file_url = publicUrl.publicUrl;
   }
 
   const { data, error } = await supabase.from("assignment_submissions").insert([
     {
       assignment_id,
       student_id,
-      content,
-      submitted_at,
+      content, // نص عادي
+      file_url, // رابط الملف لو موجود
+      submitted_at: new Date().toISOString(),
     },
   ]);
 
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json({ message: "Submission added", data });
 });
+
 
 assignmentSubmissionsRouter.patch("/:id/grade", async (req, res) => {
   const { id } = req.params;
