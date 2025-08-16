@@ -76,8 +76,8 @@ assignmentSubmissionsRouter.post("/", upload.single("file"), async (req, res) =>
     {
       assignment_id,
       student_id,
-      content, // نص عادي
-      file_url, // رابط الملف لو موجود
+      content,
+      file_url,
       submitted_at: new Date().toISOString(),
     },
   ]);

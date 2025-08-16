@@ -32,7 +32,7 @@ assignmentsRouter.post("/", upload.single("file"), async (req, res) => {
       });
 
     if (uploadError) {
-      console.error("⛔ Supabase Upload Error:", uploadError);
+      console.error("Supabase Upload Error:", uploadError);
       return res.status(500).json({ error: uploadError.message });
     }
 

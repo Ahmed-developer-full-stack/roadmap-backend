@@ -8,7 +8,9 @@
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
-    "@types/jsonwebtoken": "^9.0.10"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/uuid": "^10.0.0"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -25,7 +27,8 @@
     "jose": "^6.0.12",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
-    "sic_community": "."
+    "sic_community": ".",
+    "uuid": "^11.1.0"
   },
   "scripts": {
     "createAdmins": "bun --env-file=.env src/scripts/createAdmins.ts",
