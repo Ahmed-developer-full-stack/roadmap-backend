@@ -10,30 +10,49 @@ quizSubmissionsRouter.get("/", async (_, res) => {
 });
 
 quizSubmissionsRouter.get("/check", async (req, res) => {
-  const { quiz_id, student_id } = req.query;
+  try {
+    const { quiz_id, student_id } = req.query;
 
-  if (!quiz_id || !student_id) {
-    return res.status(400).json({ error: "quiz_id and student_id are required" });
+    if (!quiz_id || !student_id) {
+      return res
+        .status(400)
+        .json({ error: "quiz_id and student_id are required" });
+    }
+
+    // جيب الـ submission
+    const { data: submission, error: submissionError } = await supabase
+      .from("quiz_submissions")
+      .select("*")
+      .eq("quiz_id", quiz_id)
+      .eq("student_id", student_id)
+      .maybeSingle();
+
+    if (submissionError) throw submissionError;
+
+    if (!submission) {
+      return res.status(404).json({ status: "not_found" });
+    }
+
+    // جيب كل الأسئلة المرتبطة بالـ quiz
+    const { count, error: questionsError } = await supabase
+      .from("quiz_question")
+      .select("*", { count: "exact", head: true }) // head:true عشان يجيب العدد بس
+      .eq("quiz_id", quiz_id);
+
+    if (questionsError) throw questionsError;
+
+    res.json({
+      status: "submitted",
+      data: submission,
+      totalQuestions: count ?? 0,
+    });
+  } catch (err: any) {
+    console.error("❌ GET /quiz-submissions/check error:", err.message);
+    res.status(500).json({ error: err.message });
   }
-
-  const { data, error } = await supabase
-    .from("quiz_submissions")
-    .select("*")
-    .eq("quiz_id", quiz_id)
-    .eq("student_id", student_id)
-    .maybeSingle();
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  if (!data) {
-    return res.status(404).json({ status: "not_found" });
-  }
-
-  res.json({
-    status: "submitted",
-    data
-  });
 });
+
+
 
 quizSubmissionsRouter.post("/", async (req, res) => {
   const { quiz_id, student_id, name, answers } = req.body;
